@@ -2,16 +2,16 @@
 
 namespace App\Http\Controllers;
 
-use Inertia\Inertia;
+use App\Models\ActivityLog;
+use App\Models\Address;
+use App\Models\CartItem;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Payment;
-use App\Models\Address;
-use App\Models\CartItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use App\Models\ActivityLog;
+use Inertia\Inertia;
 
 class CheckoutController extends Controller
 {
@@ -25,42 +25,43 @@ class CheckoutController extends Controller
             return redirect()->route('cart');
         }
 
-        $subtotal    = $cartItems->sum(fn($i) => $i->product->price * $i->quantity);
+        $subtotal = $cartItems->sum(fn($i) => $i->product->price * $i->quantity);
         $shippingFee = $subtotal >= 2000 ? 0 : 150;
-        $total       = $subtotal + $shippingFee;
+        $total = $subtotal + $shippingFee;
 
         return Inertia::render('Checkout', [
-            'cartItems'   => $cartItems->map(fn($i) => [
-                'id'       => $i->id,
+            'cartItems' => $cartItems->map(fn($i) => [
+                'id' => $i->id,
                 'quantity' => $i->quantity,
-                'product'  => [
-                    'id'        => $i->product->id,
-                    'name'      => $i->product->name,
-                    'brand'     => $i->product->brand,
-                    'price'     => $i->product->price,
+                'product' => [
+                    'id' => $i->product->id,
+                    'name' => $i->product->name,
+                    'brand' => $i->product->brand,
+                    'price' => $i->product->price,
                     'image_url' => $i->product->image_url,
                 ],
             ]),
-            'subtotal'    => $subtotal,
+            'subtotal' => $subtotal,
             'shippingFee' => $shippingFee,
-            'total'       => $total,
+            'total' => $total,
         ]);
     }
 
     public function store(Request $request)
     {
         $data = $request->validate([
-            'first_name'     => ['required', 'string'],
-            'last_name'      => ['required', 'string'],
-            'email'          => ['required', 'email'],
-            'phone'          => ['required', 'string'],
-            'street'         => ['required', 'string'],
-            'barangay'       => ['required', 'string'],
-            'city'           => ['required', 'string'],
-            'province'       => ['required', 'string'],
-            'zip_code'       => ['required', 'string'],
+            'first_name' => ['required', 'string'],
+            'last_name' => ['required', 'string'],
+            'email' => ['required', 'email'],
+            'phone' => ['required', 'string'],
+            'street' => ['required', 'string'],
+            'barangay' => ['required', 'string'],
+            'city' => ['required', 'string'],
+            'province' => ['required', 'string'],
+            'zip_code' => ['required', 'string'],
             'payment_method' => ['required', 'in:Cash on Delivery,Bank Transfer'],
-            'order_note'     => ['nullable', 'string'],
+            'payment_channel' => ['nullable', 'string', 'max:100', 'required_if:payment_method,Bank Transfer'],
+            'order_note' => ['nullable', 'string'],
         ]);
 
         $cartItems = CartItem::with('product')
@@ -73,75 +74,75 @@ class CheckoutController extends Controller
 
         DB::beginTransaction();
         try {
-            // Save address
             $address = Address::create([
-                'user_id'  => Auth::id(),
-                'street'   => $data['street'],
+                'user_id' => Auth::id(),
+                'street' => $data['street'],
                 'barangay' => $data['barangay'],
-                'city'     => $data['city'],
+                'city' => $data['city'],
                 'province' => $data['province'],
                 'zip_code' => $data['zip_code'],
             ]);
 
-            $subtotal    = $cartItems->sum(fn($i) => $i->product->price * $i->quantity);
+            $subtotal = $cartItems->sum(fn($i) => $i->product->price * $i->quantity);
             $shippingFee = $subtotal >= 2000 ? 0 : 150;
-            $total       = $subtotal + $shippingFee;
+            $total = $subtotal + $shippingFee;
 
-            // Create order
             $order = Order::create([
-                'order_number'   => 'CB-' . date('Y') . '-' . str_pad(rand(1, 99999), 5, '0', STR_PAD_LEFT),
-                'user_id'        => Auth::id(),
-                'address_id'     => $address->id,
-                'status'         => 'Pending',
+                'order_number' => 'CB-' . date('Y') . '-' . str_pad(rand(1, 99999), 5, '0', STR_PAD_LEFT),
+                'user_id' => Auth::id(),
+                'address_id' => $address->id,
+                'status' => 'Pending',
                 'payment_method' => $data['payment_method'],
-                'subtotal'       => $subtotal,
-                'shipping_fee'   => $shippingFee,
-                'total'          => $total,
-                'order_note'     => $data['order_note'] ?? null,
+                'payment_channel' => $data['payment_channel'] ?? null,
+                'subtotal' => $subtotal,
+                'shipping_fee' => $shippingFee,
+                'total' => $total,
+                'order_note' => $data['order_note'] ?? null,
             ]);
 
-            // Create order items
             foreach ($cartItems as $item) {
                 OrderItem::create([
-                    'order_id'     => $order->id,
-                    'product_id'   => $item->product->id,
+                    'order_id' => $order->id,
+                    'product_id' => $item->product->id,
                     'product_name' => $item->product->name,
-                    'unit_price'   => $item->product->price,
-                    'quantity'     => $item->quantity,
-                    'subtotal'     => $item->product->price * $item->quantity,
+                    'unit_price' => $item->product->price,
+                    'quantity' => $item->quantity,
+                    'subtotal' => $item->product->price * $item->quantity,
                 ]);
 
-                // Deduct stock
                 $item->product->decrement('stock', $item->quantity);
             }
 
-            // Create payment record
             Payment::create([
                 'order_id' => $order->id,
-                'method'   => $data['payment_method'],
-                'status'   => 'Pending',
-                'amount'   => $total,
+                'method' => $data['payment_method'],
+                'payment_channel' => $data['payment_channel'] ?? null,
+                'status' => 'Pending',
+                'amount' => $total,
             ]);
 
-            // Clear cart
             CartItem::where('user_id', Auth::id())->delete();
 
             DB::commit();
 
             ActivityLog::log(
-                'order', 'created',
+                'order',
+                'created',
                 "New order placed: {$order->order_number}",
-                ['total' => $total, 'payment' => $data['payment_method']],
+                [
+                    'total' => $total,
+                    'payment' => $data['payment_method'],
+                    'payment_channel' => $data['payment_channel'] ?? null,
+                ],
                 null,
                 Auth::id()
             );
 
             return response()->json([
-                'success'      => true,
+                'success' => true,
                 'order_number' => $order->order_number,
-                'order_id'     => $order->id,
+                'order_id' => $order->id,
             ]);
-
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['message' => 'Order failed. Please try again.'], 500);
@@ -154,24 +155,28 @@ class CheckoutController extends Controller
             abort(403);
         }
 
-        $order->load(['items', 'address', 'payment']);
+        $order->load(['items.product', 'address', 'payment']);
 
         return Inertia::render('OrderConfirmation', [
             'order' => [
-                'id'             => $order->id,
-                'order_number'   => $order->order_number,
-                'status'         => $order->status,
+                'id' => $order->id,
+                'order_number' => $order->order_number,
+                'status' => $order->status,
                 'payment_method' => $order->payment_method,
-                'subtotal'       => $order->subtotal,
-                'shipping_fee'   => $order->shipping_fee,
-                'total'          => $order->total,
-                'created_at'     => $order->created_at->format('M d, Y · h:i A'),
-                'address'        => $order->address,
-                'items'          => $order->items->map(fn($i) => [
+                'payment_channel' => $order->payment_channel,
+                'tracking_courier' => $order->tracking_courier,
+                'tracking_number' => $order->tracking_number,
+                'subtotal' => $order->subtotal,
+                'shipping_fee' => $order->shipping_fee,
+                'total' => $order->total,
+                'created_at' => $order->created_at->format('F d, Y'),
+                'address' => $order->address,
+                'items' => $order->items->map(fn($i) => [
                     'product_name' => $i->product_name,
-                    'unit_price'   => $i->unit_price,
-                    'quantity'     => $i->quantity,
-                    'subtotal'     => $i->subtotal,
+                    'unit_price' => $i->unit_price,
+                    'quantity' => $i->quantity,
+                    'subtotal' => $i->subtotal,
+                    'image_url' => $i->product?->image_url,
                 ]),
             ],
         ]);

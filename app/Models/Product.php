@@ -18,4 +18,9 @@ class Product extends Model
         'perks'        => 'array',
         'colors'       => 'array',
     ];
+
+    public function reviews()
+    {
+        return $this->hasMany(ProductReview::class);
+    }
 }

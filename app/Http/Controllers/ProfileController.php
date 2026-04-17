@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use Inertia\Inertia;
 use App\Models\Order;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Inertia\Inertia;
 
 class ProfileController extends Controller
 {
@@ -19,25 +19,28 @@ class ProfileController extends Controller
             ->latest()
             ->get()
             ->map(fn($o) => [
-                'id'             => $o->id,
-                'order_number'   => $o->order_number,
-                'status'         => $o->status,
-                'total'          => $o->total,
-                'items_count'    => $o->items->count(),
+                'id' => $o->id,
+                'order_number' => $o->order_number,
+                'status' => $o->status,
+                'total' => $o->total,
+                'items_count' => $o->items->count(),
                 'payment_method' => $o->payment_method,
-                'created_at'     => $o->created_at->format('M d, Y'),
+                'payment_channel' => $o->payment_channel,
+                'tracking_courier' => $o->tracking_courier,
+                'tracking_number' => $o->tracking_number,
+                'created_at' => $o->created_at->format('M d, Y'),
             ]);
 
         $stats = [
-            'total_orders'  => $orders->count(),
-            'total_spent'   => $orders->sum('total'),
-            'pending'       => $orders->where('status', 'Pending')->count(),
-            'completed'     => $orders->where('status', 'Completed')->count(),
+            'total_orders' => $orders->count(),
+            'total_spent' => $orders->sum('total'),
+            'pending' => $orders->where('status', 'Pending')->count(),
+            'completed' => $orders->where('status', 'Completed')->count(),
         ];
 
         return Inertia::render('Profile', [
             'orders' => $orders,
-            'stats'  => $stats,
+            'stats' => $stats,
         ]);
     }
 
@@ -47,9 +50,9 @@ class ProfileController extends Controller
 
         $validated = $request->validate([
             'first_name' => ['required', 'string', 'max:255'],
-            'last_name'  => ['required', 'string', 'max:255'],
-            'email'      => ['required', 'email', 'unique:users,email,' . $user->id],
-            'phone'      => ['nullable', 'string', 'max:20'],
+            'last_name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'unique:users,email,' . $user->id],
+            'phone' => ['nullable', 'string', 'max:20'],
         ]);
 
         $user->update($validated);
@@ -61,7 +64,7 @@ class ProfileController extends Controller
     {
         $request->validate([
             'current_password' => ['required'],
-            'password'         => ['required', 'min:8', 'confirmed'],
+            'password' => ['required', 'min:8', 'confirmed'],
         ]);
 
         $user = Auth::user();

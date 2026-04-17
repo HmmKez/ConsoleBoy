@@ -10,12 +10,14 @@ class ShopController extends Controller
 {
     public function index(Request $request)
     {
-        $brand    = $request->input('brand', '');
-        $search   = $request->input('search', '');
-        $sort     = $request->input('sort', 'low');
-        $maxPrice = $request->input('max_price', 50000);
+        $brand = $request->input('brand', '');
+        $search = $request->input('search', '');
+        $sort = $request->input('sort', 'low');
         $category = $request->input('category', '');
-        $inStock  = $request->input('in_stock', '');
+        $inStock = $request->input('in_stock', '');
+        $catalogMaxPrice = (int) ceil((Product::where('is_available', true)->max('price') ?? 50000) / 1000) * 1000;
+        $catalogMaxPrice = max($catalogMaxPrice, 50000);
+        $maxPrice = (int) $request->input('max_price', $catalogMaxPrice);
 
         $query = Product::where('is_available', true);
 
@@ -64,8 +66,12 @@ class ShopController extends Controller
                 'category'  => $category,
                 'search'    => $search,
                 'sort'      => $sort,
-                'max_price' => (int) $maxPrice,
+                'max_price' => $maxPrice,
                 'in_stock'  => $inStock,
+            ],
+            'priceBounds' => [
+                'min' => 0,
+                'max' => $catalogMaxPrice,
             ],
             'content' => $content,
         ]);

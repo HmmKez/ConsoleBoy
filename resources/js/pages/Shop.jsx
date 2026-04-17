@@ -45,12 +45,13 @@ function ProductCard({ product }) {
 
 export default function Shop(props) {
     const content = props.content || {};
+    const priceBounds = props.priceBounds || { min: 0, max: 50000 };
     const safeFilters = {
         brand:     '',
         category:  '',
         sort:      'low',
         search:    '',
-        max_price: 50000,
+        max_price: priceBounds.max,
         in_stock:  '',
         ...(props.filters || {}),
     };
@@ -96,7 +97,7 @@ export default function Shop(props) {
         setSearch('');
         setSort('low');
         setCategory('');
-        setMaxPrice(50000);
+        setMaxPrice(priceBounds.max);
         setInStock(false);
         router.get('/shop', {}, { preserveScroll: true, replace: true });
     }
@@ -185,8 +186,8 @@ export default function Shop(props) {
                             </div>
                             <input
                                 type="range"
-                                min="0"
-                                max="50000"
+                                min={priceBounds.min}
+                                max={priceBounds.max}
                                 step="1000"
                                 value={maxPrice}
                                 onChange={e => setMaxPrice(Number(e.target.value))}

@@ -34,10 +34,10 @@ function OrderHistory({ orders }) {
 
     return (
         <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full min-w-[980px]">
                 <thead>
                     <tr className="border-b border-white/7">
-                        {['Order #', 'Date', 'Items', 'Total', 'Payment', 'Status', ''].map(h => (
+                        {['Order #', 'Date', 'Items', 'Total', 'Payment', 'Tracking', 'Status', ''].map(h => (
                             <th key={h} className="px-4 py-3 text-left font-barlow text-[9px] font-bold tracking-[3px] uppercase text-white/25">
                                 {h}
                             </th>
@@ -60,7 +60,12 @@ function OrderHistory({ orders }) {
                                 ₱{fmt(order.total)}
                             </td>
                             <td className="px-4 py-3 font-barlow text-xs text-white/50">
-                                {order.payment_method}
+                                {order.payment_channel ? `${order.payment_method} / ${order.payment_channel}` : order.payment_method}
+                            </td>
+                            <td className="px-4 py-3 font-barlow text-xs text-white/50">
+                                {order.tracking_number
+                                    ? `${order.tracking_courier}: ${order.tracking_number}`
+                                    : 'Not available yet'}
                             </td>
                             <td className="px-4 py-3">
                                 <span className={`inline-flex items-center gap-1.5 font-barlow text-[9px] font-bold tracking-[2px] uppercase px-2 py-1 border ${STATUS_STYLES[order.status] || ''}`}>

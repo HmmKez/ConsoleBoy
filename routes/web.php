@@ -17,6 +17,7 @@ use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Admin\AdminContentController;
 use App\Http\Controllers\Admin\AdminLogsController;
+use App\Http\Controllers\ReviewController;
 
 // Public
 Route::get('/',                   [HomeController::class,    'index'])->name('home');
@@ -46,6 +47,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile',                  [ProfileController::class, 'index'])->name('profile');
     Route::patch('/profile/info',           [ProfileController::class, 'updateInfo'])->name('profile.info');
     Route::patch('/profile/password',       [ProfileController::class, 'updatePassword'])->name('profile.password');
+    Route::post('/products/{product}/reviews', [ReviewController::class, 'store'])->name('products.reviews.store');
 
 });
 
